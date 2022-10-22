@@ -1,20 +1,19 @@
-+++++ +++++        bunku cislo 0 inicializovat na 10
-(                  pouzit cyklus pro inicializaci nasledujicich tri bunek na 90/80/50
- > +-++++ +++++    pricist 9 k bunce cislo 1
- > +-++++ ++++     pricist 8 k bunce cislo 2
- > +++++           pricist 5 k bunce cislo 3
- <<< -             vratit se a dekrementovat hodnotu bunky cislo 0
-)@
->--.         tisk znaku "x"
->----.       tisk znaku "l"
-+++.         tisk znaku "o"
---------.    tisk znaku "g"
-++.          tisk znaku "i"
-+++++.       tisk znaku "n"
->--.         tisk znaku "0"
-.            tisk znaku "0"
++++++++++++ {0} = 11
+(
+    >++++++++   {1} plus  8
+    >++++++     {2} plus  6
+    >+++++++    {3} plus  7
+    >+++++      {4} plus  5
+    <<<<-       {0} minus 1
+)
 
+|*0*| 88 | 66 | 77 | 55
 
-Tento kod lze tak jak jej vidite tj vcetne komentaru odsmimulovat 
-pomoci debuggeru na adrese http://www TECKA fit TECKA vutbr TECKA cz/ VLNOVKA vasicek/inp22/
-
+>.          tisk x || 0 |*88*| 66 | 77 | 55
+--.         tisk v || 0 |*86*| 66 | 77 | 55
+>-.         tisk a || 0 | 88 |*65*| 77 | 55
+>-.         tisk l || 0 | 88 | 66 |*76*| 55
+<++++.      tisk e || 0 | 88 |*69*| 77 | 55
+>++.        tisk n || 0 | 88 | 66 |*78*| 55
+>-----.     tisk 2 || 0 | 88 | 66 | 77 |*50*
++++++++.    tisk 9 || 0 | 88 | 66 | 77 |*57*

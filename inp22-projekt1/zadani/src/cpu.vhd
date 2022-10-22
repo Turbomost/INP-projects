@@ -8,6 +8,34 @@ USE ieee.std_logic_1164.ALL;
 USE ieee.std_logic_arith.ALL;
 USE ieee.std_logic_unsigned.ALL;
 
+-- Program counter
+ENTITY cpu_pc IS
+  PORT (
+    CLK : IN STD_LOGIC;
+    RESET : IN STD_LOGIC;
+    PC_INC : IN STD_LOGIC;
+    PC_DEC : IN STD_LOGIC;
+    PC_OUT : OUT STD_LOGIC_VECTOR (11 DOWNTO 0);
+  );
+END ENTITY cpu_pc;
+
+ARCHITECTURE behavioral OF cpu_pc IS
+  SIGNAL pc_reg : STD_LOGIC_VECTOR(11 DOWNTO 0);
+BEGIN
+  pc_cntr : PROCESS (RESET, CLK, PC_INC, PC_DEC)
+  BEGIN
+    IF (RESET = '1') THEN
+      pc_reg <= (OTHERS => '0');
+    ELSIF rising_edge(CLK) THEN
+      IF (pc_dec = '1') THEN
+        pc_reg <= pc_reg - 1;
+      ELSIF (pc_inc = '1') THEN
+        pc_reg <= pc_reg + 1;
+      END IF;
+    END IF;
+  END PROCESS;
+END behavioral;
+
 -- ----------------------------------------------------------------------------
 --                        Entity declaration
 -- ----------------------------------------------------------------------------
@@ -35,6 +63,7 @@ ENTITY cpu IS
     OUT_WE : OUT STD_LOGIC -- LCD <- OUT_DATA pokud OUT_WE='1' a OUT_BUSY='0'
   );
 END cpu;
+
 -- ----------------------------------------------------------------------------
 --                      Architecture declaration
 -- ----------------------------------------------------------------------------
