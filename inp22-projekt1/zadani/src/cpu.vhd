@@ -149,21 +149,21 @@ ENTITY MX1 IS
     MX1_IN_PC : IN STD_LOGIC_VECTOR (11 DOWNTO 0);
     MX1_IN_PTR : IN STD_LOGIC_VECTOR (11 DOWNTO 0);
     MX1_SEL : IN STD_LOGIC;
-    MX1_OUT : OUT STD_LOGIC_VECTOR (11 DOWNTO 0)
+    MX1_OUT : OUT STD_LOGIC_VECTOR (12 DOWNTO 0)
   );
 END ENTITY MX1;
 
 ---------
 ARCHITECTURE behavioral OF MX1 IS
-  SIGNAL mx1_val : STD_LOGIC_VECTOR (11 DOWNTO 0);
+  SIGNAL mx1_val : STD_LOGIC_VECTOR (12 DOWNTO 0);
 BEGIN
   mx1 : PROCESS (CLK, RESET, MX1_IN_PC, MX1_IN_PTR, MX1_SEL) BEGIN
     IF (RESET = '1') THEN
       mx1_val <= (OTHERS => '0');
     ELSIF rising_edge(CLK) THEN
       CASE MX1_SEL IS
-        WHEN '0' => mx1_val <= MX1_IN_PC;
-        WHEN '1' => mx1_val <= MX1_IN_PTR;
+        WHEN '0' => mx1_val <= '0' & MX1_IN_PC;
+        WHEN '1' => mx1_val <= '1' & MX1_IN_PTR;
         WHEN OTHERS => mx1_val <= (OTHERS => '0');
       END CASE;
     END IF;
@@ -228,7 +228,7 @@ ENTITY FSM IS
     IN_VLD : IN STD_LOGIC;
     OUT_BUSY : IN STD_LOGIC;
     DATA_RDATA : IN STD_LOGIC_VECTOR (7 DOWNTO 0);
-    DATA_RDRW : OUT STD_LOGIC := '0';
+    DATA_RDWR : OUT STD_LOGIC := '0';
 
     CNT_INC : OUT STD_LOGIC := '0';
     CNT_DEC : OUT STD_LOGIC := '0';
@@ -242,7 +242,6 @@ ENTITY FSM IS
     PTR_DEC : OUT STD_LOGIC := '0';
     PTR_CLR : OUT STD_LOGIC := '0';
 
-    DATA_RDWR : OUT STD_LOGIC := '0';
     DATA_EN : OUT STD_LOGIC := '0';
     IN_REQ : OUT STD_LOGIC := '0';
     OUT_WE : OUT STD_LOGIC := '0';
@@ -277,8 +276,8 @@ ARCHITECTURE behavioral OF FSM IS
 
     state_getchar_start,
     state_getchar_end,
+    state_write,
 
-    -- TODO
     state_while_do_start,
     state_while_do_end,
     state_do_while_start,
@@ -301,7 +300,7 @@ BEGIN
     END IF;
   END PROCESS;
 
-  fsm_next_state_proc : PROCESS (curr_state, OUT_BUSY, DATA_RDATA) BEGIN
+  fsm_next_state_proc : PROCESS (curr_state, OUT_BUSY, DATA_RDATA, IN_VLD) BEGIN
 
     PC_INC <= '0';
     PC_DEC <= '0';
@@ -312,7 +311,7 @@ BEGIN
     CNT_DEC <= '0';
     CNT_INC <= '0';
     CNT_CLR <= '0';
-    DATA_RDRW <= '0';
+    DATA_RDWR <= '0';
     DATA_EN <= '0';
     IN_REQ <= '0';
     MX1_SEL <= '0';
@@ -333,28 +332,38 @@ BEGIN
 
       WHEN state_decode =>
         CASE DATA_RDATA IS
-          WHEN X"3E" => next_state <= state_ptr_inc; -- >
-          WHEN X"3C" => next_state <= state_ptr_dec; -- <
-          WHEN X"2B" => next_state <= state_val_inc; -- +
-          WHEN X"2D" => next_state <= state_val_dec; -- -
+          WHEN X"3E" =>
+            PC_INC <= '1';
+            next_state <= state_ptr_inc; -- >
+          WHEN X"3C" =>
+            PC_INC <= '1';
+            next_state <= state_ptr_dec; -- <
+          WHEN X"2B" =>
+            MX1_SEL <= '1';
+            next_state <= state_val_inc; -- +
+          WHEN X"2D" =>
+            MX1_SEL <= '1';
+            next_state <= state_val_dec; -- -
           WHEN X"5B" => next_state <= state_while_do_start; -- [
           WHEN X"5D" => next_state <= state_while_do_end; -- ]
           WHEN X"28" => next_state <= state_do_while_start; -- (
           WHEN X"29" => next_state <= state_do_while_end; -- )
-          WHEN X"2E" => next_state <= state_putchar_start; -- .
-          WHEN X"2C" => next_state <= state_getchar_start; -- ,
+          WHEN X"2E" =>
+            MX1_SEL <= '1';
+            next_state <= state_putchar_start; -- .
+          WHEN X"2C" =>
+            MX1_SEL <= '1';
+            next_state <= state_getchar_start; -- ,
           WHEN X"00" => next_state <= state_return; -- null
           WHEN OTHERS => next_state <= state_undefined; -- undef
         END CASE;
 
       WHEN state_ptr_inc =>
         PTR_INC <= '1';
-        PC_INC <= '1';
         next_state <= state_load;
 
       WHEN state_ptr_dec =>
         PTR_DEC <= '1';
-        PC_INC <= '1';
         next_state <= state_load;
 
       WHEN state_val_inc =>
@@ -364,12 +373,13 @@ BEGIN
 
       WHEN state_mx2_10 =>
         MX2_SEL <= "10";
+        MX1_SEL <= '1';
+        PC_INC <= '1';
         next_state <= state_val_inc_end;
 
       WHEN state_val_inc_end =>
         DATA_EN <= '1';
         DATA_RDWR <= '1';
-        PC_INC <= '1';
         next_state <= state_load;
 
       WHEN state_val_dec =>
@@ -379,46 +389,57 @@ BEGIN
 
       WHEN state_mx2_01 =>
         MX2_SEL <= "01";
+        MX1_SEL <= '1';
+        PC_INC <= '1';
         next_state <= state_val_dec_end;
 
       WHEN state_val_dec_end =>
         DATA_EN <= '1';
         DATA_RDWR <= '1';
-        PC_INC <= '1';
         next_state <= state_load;
 
       WHEN state_putchar_start =>
         DATA_EN <= '1';
         DATA_RDWR <= '0';
+        PC_INC <= '1';
+        MX1_SEL <= '1';
         next_state <= state_putchar_end;
 
       WHEN state_putchar_end =>
         IF OUT_BUSY = '0' THEN
           OUT_WE <= '1';
-          PC_INC <= '1';
           next_state <= state_load;
         ELSE
           DATA_EN <= '1';
           DATA_RDWR <= '0';
+          MX1_SEL <= '1';
           next_state <= state_putchar_end;
         END IF;
 
       WHEN state_getchar_start =>
-        next_state <= state_getchar_end;
+        --DATA_EN <= '1';
+        --DATA_RDWR <= '1';
         IN_REQ <= '1';
-        MX2_SEL <= "00";
+        --MX2_SEL <= "00";
+        --MX1_SEL <= '1';
+        --PC_INC <= '1';
+        next_state <= state_getchar_end;
 
       WHEN state_getchar_end =>
         IF IN_VLD /= '1' THEN
           IN_REQ <= '1';
-          MX2_SEL <= "00";
           next_state <= state_getchar_end;
         ELSE
-          DATA_EN <= '1';
-          DATA_RDWR <= '1';
+          MX2_SEL <= "00";
+          MX1_SEL <= '1';
           PC_INC <= '1';
-          next_state <= state_load;
+          next_state <= state_write;
         END IF;
+
+      WHEN state_write =>
+        DATA_EN <= '1';
+        DATA_RDWR <= '1';
+        next_state <= state_load;
 
         -- TODO
       WHEN state_while_do_start => next_state <= state_load;
@@ -490,7 +511,7 @@ ARCHITECTURE behavioral OF cpu IS
 
   -- MX1 Signals
   SIGNAL mx1_sel : STD_LOGIC := '0';
-  SIGNAL mx1_out : STD_LOGIC_VECTOR (11 DOWNTO 0) := "000000000000";
+  SIGNAL mx1_out : STD_LOGIC_VECTOR (12 DOWNTO 0) := "0000000000000";
 
   -- MX2 Signals
   SIGNAL mx2_sel : STD_LOGIC_VECTOR (1 DOWNTO 0) := "00";
@@ -506,8 +527,9 @@ BEGIN
       EN => EN,
       DATA_RDATA => DATA_RDATA,
       DATA_EN => DATA_EN,
+      DATA_RDWR => DATA_RDWR,
       IN_REQ => IN_REQ,
-      IN_VLD => in_vld,
+      IN_VLD => IN_VLD,
       PTR_INC => ptr_inc,
       PTR_DEC => ptr_dec,
       PTR_CLR => ptr_clr,
@@ -518,7 +540,9 @@ BEGIN
       PC_DEC => pc_dec,
       PC_CLR => pc_clr,
       OUT_BUSY => OUT_BUSY,
-      OUT_WE => OUT_WE
+      OUT_WE => OUT_WE,
+      MX1_SEL => mx1_sel,
+      MX2_SEL => mx2_sel
     );
 
   -- PC entity
@@ -548,10 +572,10 @@ BEGIN
     PORT MAP(
       CLK => CLK,
       RESET => RESET,
-      PTR_INC => cnt_inc,
-      PTR_DEC => cnt_dec,
-      PTR_CLR => cnt_clr,
-      PTR_OUT => cnt_out
+      PTR_INC => ptr_inc,
+      PTR_DEC => ptr_dec,
+      PTR_CLR => ptr_clr,
+      PTR_OUT => ptr_out
     );
 
   -- MX1 entity
