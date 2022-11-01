@@ -19,6 +19,7 @@ ENTITY CNT IS
     CNT_INC : IN STD_LOGIC;
     CNT_DEC : IN STD_LOGIC;
     CNT_CLR : IN STD_LOGIC;
+    CNT_SET : IN STD_LOGIC;
     CNT_OUT : OUT STD_LOGIC_VECTOR (11 DOWNTO 0)
   );
 END ENTITY CNT;
@@ -27,12 +28,14 @@ END ENTITY CNT;
 ARCHITECTURE behavioral OF CNT IS
   SIGNAL cnt_value : STD_LOGIC_VECTOR(11 DOWNTO 0);
 BEGIN
-  cnt : PROCESS (RESET, CLK, CNT_INC, CNT_DEC, CNT_CLR) BEGIN
+  cnt : PROCESS (RESET, CLK, CNT_INC, CNT_DEC, CNT_CLR, CNT_SET) BEGIN
     IF (RESET = '1') THEN
       cnt_value <= (OTHERS => '0');
     ELSIF rising_edge(CLK) THEN
       IF (CNT_CLR = '1') THEN
         cnt_value <= (OTHERS => '0');
+      ELSIF (CNT_SET = '1') THEN
+        cnt_value <= "000000000001";
       ELSIF (CNT_DEC = '1') THEN
         cnt_value <= cnt_value - 1;
       ELSIF (CNT_INC = '1') THEN
@@ -233,6 +236,9 @@ ENTITY FSM IS
     CNT_INC : OUT STD_LOGIC := '0';
     CNT_DEC : OUT STD_LOGIC := '0';
     CNT_CLR : OUT STD_LOGIC := '0';
+    CNT_SET : OUT STD_LOGIC := '0';
+
+    CNT_OUT : IN STD_LOGIC_VECTOR (11 DOWNTO 0);
 
     PC_INC : OUT STD_LOGIC := '0';
     PC_DEC : OUT STD_LOGIC := '0';
@@ -279,7 +285,15 @@ ARCHITECTURE behavioral OF FSM IS
     state_write,
 
     state_while_do_start,
+    state_while_do_start_data,
+    state_while_do_start_cnt,
+
     state_while_do_end,
+    state_while_do_end_data,
+    state_while_do_end_cnt,
+    state_while_do_end_cnt_reload,
+    state_while_do_end_cnt_end,
+
     state_do_while_start,
     state_do_while_end,
 
@@ -300,7 +314,7 @@ BEGIN
     END IF;
   END PROCESS;
 
-  fsm_next_state_proc : PROCESS (curr_state, OUT_BUSY, DATA_RDATA, IN_VLD) BEGIN
+  fsm_next_state_proc : PROCESS (curr_state, OUT_BUSY, DATA_RDATA, IN_VLD, CNT_OUT) BEGIN
 
     PC_INC <= '0';
     PC_DEC <= '0';
@@ -311,6 +325,7 @@ BEGIN
     CNT_DEC <= '0';
     CNT_INC <= '0';
     CNT_CLR <= '0';
+    CNT_SET <= '0';
     DATA_RDWR <= '0';
     DATA_EN <= '0';
     IN_REQ <= '0';
@@ -344,8 +359,12 @@ BEGIN
           WHEN X"2D" =>
             MX1_SEL <= '1';
             next_state <= state_val_dec; -- -
-          WHEN X"5B" => next_state <= state_while_do_start; -- [
-          WHEN X"5D" => next_state <= state_while_do_end; -- ]
+          WHEN X"5B" =>
+            MX1_SEL <= '1';
+            next_state <= state_while_do_start; -- [
+          WHEN X"5D" =>
+            MX1_SEL <= '1';
+            next_state <= state_while_do_end; -- ]
           WHEN X"28" => next_state <= state_do_while_start; -- (
           WHEN X"29" => next_state <= state_do_while_end; -- )
           WHEN X"2E" =>
@@ -417,12 +436,7 @@ BEGIN
         END IF;
 
       WHEN state_getchar_start =>
-        --DATA_EN <= '1';
-        --DATA_RDWR <= '1';
         IN_REQ <= '1';
-        --MX2_SEL <= "00";
-        --MX1_SEL <= '1';
-        --PC_INC <= '1';
         next_state <= state_getchar_end;
 
       WHEN state_getchar_end =>
@@ -441,9 +455,82 @@ BEGIN
         DATA_RDWR <= '1';
         next_state <= state_load;
 
-        -- TODO
-      WHEN state_while_do_start => next_state <= state_load;
-      WHEN state_while_do_end => next_state <= state_load;
+      WHEN state_while_do_start =>
+        PC_INC <= '1';
+        DATA_EN <= '1';
+        DATA_RDWR <= '0';
+        MX1_SEL <= '1';
+        next_state <= state_while_do_start_data;
+
+      WHEN state_while_do_start_data =>
+        IF DATA_RDATA = "00000000" THEN
+          DATA_EN <= '1';
+          DATA_RDWR <= '0';
+          CNT_SET <= '1';
+          MX1_SEL <= '1';
+          next_state <= state_while_do_start_cnt;
+        ELSE
+          next_state <= state_load;
+        END IF;
+
+      WHEN state_while_do_start_cnt =>
+        IF CNT_OUT /= "000000000000" THEN
+          IF DATA_RDATA = x"5B" THEN
+            CNT_INC <= '1';
+          ELSIF DATA_RDATA = x"5D" THEN
+            CNT_DEC <= '1';
+          END IF;
+          DATA_EN <= '1';
+          DATA_RDWR <= '0';
+          PC_INC <= '1';
+          next_state <= state_while_do_start_cnt;
+        ELSE
+          MX1_SEL <= '1';
+          next_state <= state_load;
+        END IF;
+
+      WHEN state_while_do_end =>
+        DATA_EN <= '1';
+        DATA_RDWR <= '0';
+        next_state <= state_while_do_end_data;
+
+      WHEN state_while_do_end_data =>
+        IF DATA_RDATA = "00000000" THEN
+          PC_INC <= '1';
+          next_state <= state_load;
+        ELSE
+          CNT_SET <= '1';
+          PC_DEC <= '1';
+          MX1_SEL <= '1';
+          next_state <= state_while_do_end_cnt_reload;
+        END IF;
+
+      WHEN state_while_do_end_cnt =>
+        IF CNT_OUT /= "000000000000" THEN
+          IF DATA_RDATA = x"5D" THEN
+            CNT_INC <= '1';
+          ELSIF DATA_RDATA = x"5B" THEN
+            CNT_DEC <= '1';
+          END IF;
+          PC_DEC <= '1';
+          next_state <= state_while_do_end_cnt_reload;
+        ELSE
+          PC_INC <= '1';
+          next_state <= state_while_do_end_cnt_end;
+        END IF;
+
+      WHEN state_while_do_end_cnt_reload =>
+        IF CNT_OUT = "000000000000" THEN
+          PC_INC <= '1';
+        END IF;
+        DATA_EN <= '1';
+        DATA_RDWR <= '0';
+        MX1_SEL <= '1';
+        next_state <= state_while_do_end_cnt;
+
+      WHEN state_while_do_end_cnt_end =>
+        next_state <= state_load;
+
       WHEN state_do_while_start => next_state <= state_load;
       WHEN state_do_while_end => next_state <= state_load;
 
@@ -502,6 +589,7 @@ ARCHITECTURE behavioral OF cpu IS
   SIGNAL cnt_inc : STD_LOGIC := '0';
   SIGNAL cnt_dec : STD_LOGIC := '0';
   SIGNAL cnt_clr : STD_LOGIC := '0';
+  SIGNAL cnt_set : STD_LOGIC := '0';
 
   -- PC Signals
   SIGNAL pc_out : STD_LOGIC_VECTOR (11 DOWNTO 0) := "000000000000";
@@ -536,6 +624,8 @@ BEGIN
       CNT_INC => cnt_inc,
       CNT_DEC => cnt_dec,
       CNT_CLR => cnt_clr,
+      CNT_SET => cnt_set,
+      CNT_OUT => cnt_out,
       PC_INC => pc_inc,
       PC_DEC => pc_dec,
       PC_CLR => pc_clr,
@@ -564,6 +654,7 @@ BEGIN
       CNT_INC => cnt_inc,
       CNT_DEC => cnt_dec,
       CNT_CLR => cnt_clr,
+      CNT_SET => cnt_set,
       CNT_OUT => cnt_out
     );
 
