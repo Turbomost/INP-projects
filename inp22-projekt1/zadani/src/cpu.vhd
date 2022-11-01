@@ -295,6 +295,8 @@ ARCHITECTURE behavioral OF FSM IS
     state_while_do_start,
     state_while_do_start_data,
     state_while_do_start_cnt,
+    state_while_do_start_cnt_reload,
+    state_while_do_start_cnt_end,
 
     state_while_do_end,
     state_while_do_end_data,
@@ -507,10 +509,20 @@ BEGIN
           DATA_RDWR <= '0';
           CNT_SET <= '1';
           MX1_SEL <= '1';
-          next_state <= state_while_do_start_cnt;
+          next_state <= state_while_do_start_cnt_reload;
         ELSE
           next_state <= state_load;
         END IF;
+
+        -- '[' State for PC counter
+      WHEN state_while_do_start_cnt_reload =>
+        IF CNT_OUT = "000000000000" THEN
+          PC_INC <= '1';
+        END IF;
+        DATA_EN <= '1';
+        DATA_RDWR <= '0';
+        MX1_SEL <= '1';
+        next_state <= state_while_do_start_cnt;
 
         -- '[' Count brackets
       WHEN state_while_do_start_cnt =>
@@ -520,14 +532,16 @@ BEGIN
           ELSIF DATA_RDATA = x"5D" THEN
             CNT_DEC <= '1';
           END IF;
-          DATA_EN <= '1';
-          DATA_RDWR <= '0';
           PC_INC <= '1';
-          next_state <= state_while_do_start_cnt;
+          next_state <= state_while_do_start_cnt_reload;
         ELSE
           MX1_SEL <= '1';
-          next_state <= state_load;
+          next_state <= state_while_do_start_cnt_end;
         END IF;
+
+        -- '[' Wait for PC counter 
+      WHEN state_while_do_start_cnt_end =>
+        next_state <= state_load;
 
         -- ']' End while cycle
       WHEN state_while_do_end =>
