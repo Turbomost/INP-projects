@@ -590,17 +590,17 @@ BEGIN
       WHEN state_while_do_end_cnt_end =>
         next_state <= state_load;
 
-        -- '(' 
+        -- '(' Continue
       WHEN state_do_while_start =>
         next_state <= state_load;
 
-        -- ')' 
+        -- ')' End Do-While
       WHEN state_do_while_end =>
         DATA_EN <= '1';
         DATA_RDWR <= '0';
         next_state <= state_do_while_end_data;
 
-        -- ')'
+        -- ')' Check memory
       WHEN state_do_while_end_data =>
         IF DATA_RDATA = "00000000" THEN
           PC_INC <= '1';
@@ -612,6 +612,7 @@ BEGIN
           next_state <= state_do_while_end_cnt_reload;
         END IF;
 
+        -- ')' Count CNT
       WHEN state_do_while_end_cnt =>
         IF CNT_OUT /= "000000000000" THEN
           IF DATA_RDATA = x"29" THEN
@@ -626,6 +627,7 @@ BEGIN
           next_state <= state_do_while_end_cnt_end;
         END IF;
 
+        -- ')' State for PC counter
       WHEN state_do_while_end_cnt_reload =>
         IF CNT_OUT = "000000000000" THEN
           PC_INC <= '1';
@@ -638,10 +640,11 @@ BEGIN
         -- ')' Wait for PC counter 
       WHEN state_do_while_end_cnt_end =>
         next_state <= state_load;
-        -- 'NULL'
+
+        -- 'NULL' Loop in return
       WHEN state_return => next_state <= state_return;
 
-        -- '?'
+        -- '?' Continue
       WHEN state_undefined => next_state <= state_load;
     END CASE;
   END PROCESS;
