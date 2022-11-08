@@ -296,12 +296,16 @@ ARCHITECTURE behavioral OF FSM IS
     state_while_do_start_data,
     state_while_do_start_cnt,
     state_while_do_start_cnt_reload,
+    state_while_do_start_wait,
+    state_while_do_start_wait2,
     state_while_do_start_cnt_end,
 
     state_while_do_end,
     state_while_do_end_data,
     state_while_do_end_cnt,
     state_while_do_end_cnt_reload,
+    state_while_do_end_wait,
+    state_while_do_end_wait2,
     state_while_do_end_cnt_end,
 
     -- Do-while
@@ -311,6 +315,8 @@ ARCHITECTURE behavioral OF FSM IS
     state_do_while_end_data,
     state_do_while_end_cnt,
     state_do_while_end_cnt_reload,
+    state_do_while_end_wait,
+    state_do_while_end_wait2,
     state_do_while_end_cnt_end,
 
     -- Other
@@ -381,6 +387,7 @@ BEGIN
             next_state <= state_val_dec; -- -
           WHEN X"5B" =>
             MX1_SEL <= '1';
+            PC_INC <= '1';
             next_state <= state_while_do_start; -- [
           WHEN X"5D" =>
             MX1_SEL <= '1';
@@ -496,10 +503,8 @@ BEGIN
 
         -- '[' Start while cycle
       WHEN state_while_do_start =>
-        PC_INC <= '1';
         DATA_EN <= '1';
         DATA_RDWR <= '0';
-        MX1_SEL <= '1';
         next_state <= state_while_do_start_data;
 
         -- '[' Check memory
@@ -508,20 +513,26 @@ BEGIN
           DATA_EN <= '1';
           DATA_RDWR <= '0';
           CNT_SET <= '1';
-          MX1_SEL <= '1';
-          next_state <= state_while_do_start_cnt_reload;
+          next_state <= state_while_do_start_cnt;
         ELSE
           next_state <= state_load;
         END IF;
 
         -- '[' State for PC counter
       WHEN state_while_do_start_cnt_reload =>
-        IF CNT_OUT = "000000000000" THEN
+        IF CNT_OUT /= "000000000000" THEN
           PC_INC <= '1';
+        ELSE
+          --PC_DEC <= '1';
         END IF;
+        next_state <= state_while_do_start_wait;
+
+      WHEN state_while_do_start_wait =>
+        next_state <= state_while_do_start_wait2;
+
+      WHEN state_while_do_start_wait2 =>
         DATA_EN <= '1';
         DATA_RDWR <= '0';
-        MX1_SEL <= '1';
         next_state <= state_while_do_start_cnt;
 
         -- '[' Count brackets
@@ -532,10 +543,8 @@ BEGIN
           ELSIF DATA_RDATA = x"5D" THEN
             CNT_DEC <= '1';
           END IF;
-          PC_INC <= '1';
           next_state <= state_while_do_start_cnt_reload;
         ELSE
-          MX1_SEL <= '1';
           next_state <= state_while_do_start_cnt_end;
         END IF;
 
@@ -557,8 +566,7 @@ BEGIN
         ELSE
           CNT_SET <= '1';
           PC_DEC <= '1';
-          MX1_SEL <= '1';
-          next_state <= state_while_do_end_cnt_reload;
+          next_state <= state_while_do_end_wait;
         END IF;
 
         -- ']' Count CNT
@@ -569,10 +577,8 @@ BEGIN
           ELSIF DATA_RDATA = x"5B" THEN
             CNT_DEC <= '1';
           END IF;
-          PC_DEC <= '1';
           next_state <= state_while_do_end_cnt_reload;
         ELSE
-          PC_INC <= '1';
           next_state <= state_while_do_end_cnt_end;
         END IF;
 
@@ -580,10 +586,17 @@ BEGIN
       WHEN state_while_do_end_cnt_reload =>
         IF CNT_OUT = "000000000000" THEN
           PC_INC <= '1';
+        ELSE
+          PC_DEC <= '1';
         END IF;
+        next_state <= state_while_do_end_wait;
+
+      WHEN state_while_do_end_wait =>
+        next_state <= state_while_do_end_wait2;
+
+      WHEN state_while_do_end_wait2 =>
         DATA_EN <= '1';
         DATA_RDWR <= '0';
-        MX1_SEL <= '1';
         next_state <= state_while_do_end_cnt;
 
         -- ']' Wait for PC counter 
@@ -608,8 +621,7 @@ BEGIN
         ELSE
           CNT_SET <= '1';
           PC_DEC <= '1';
-          MX1_SEL <= '1';
-          next_state <= state_do_while_end_cnt_reload;
+          next_state <= state_do_while_end_wait;
         END IF;
 
         -- ')' Count CNT
@@ -620,10 +632,8 @@ BEGIN
           ELSIF DATA_RDATA = x"28" THEN
             CNT_DEC <= '1';
           END IF;
-          PC_DEC <= '1';
           next_state <= state_do_while_end_cnt_reload;
         ELSE
-          PC_INC <= '1';
           next_state <= state_do_while_end_cnt_end;
         END IF;
 
@@ -631,10 +641,17 @@ BEGIN
       WHEN state_do_while_end_cnt_reload =>
         IF CNT_OUT = "000000000000" THEN
           PC_INC <= '1';
+        ELSE
+          PC_DEC <= '1';
         END IF;
+        next_state <= state_do_while_end_wait;
+
+      WHEN state_do_while_end_wait =>
+        next_state <= state_do_while_end_wait2;
+
+      WHEN state_do_while_end_wait2 =>
         DATA_EN <= '1';
         DATA_RDWR <= '0';
-        MX1_SEL <= '1';
         next_state <= state_do_while_end_cnt;
 
         -- ')' Wait for PC counter 
