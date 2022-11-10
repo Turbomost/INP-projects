@@ -262,82 +262,82 @@ END ENTITY FSM;
 ARCHITECTURE behavioral OF FSM IS
 
   TYPE fsm_state IS (
-    state_idle,
-    state_load,
-    state_decode,
+    s_idle,
+    s_load,
+    s_decode,
 
     -- ptr++
-    state_ptr_inc,
+    s_ptr_inc,
 
     -- ptr--
-    state_ptr_dec,
+    s_ptr_dec,
 
     -- Value++
-    state_val_inc,
-    state_mx2_10,
-    state_val_inc_end,
+    s_val_inc,
+    s_mx2_10,
+    s_val_inc_end,
 
     -- Value--
-    state_val_dec,
-    state_mx2_01,
-    state_val_dec_end,
+    s_val_dec,
+    s_mx2_01,
+    s_val_dec_end,
 
     -- Putchar
-    state_putchar_start,
-    state_putchar_end,
+    s_putc_start,
+    s_putc_end,
 
     -- Getchar
-    state_getchar_start,
-    state_getchar_end,
-    state_write,
+    s_getc_start,
+    s_getc_end,
+    s_write,
 
     --  While
-    state_while_do_start,
-    state_while_do_start_data,
-    state_while_do_start_cnt,
-    state_while_do_start_cnt_reload,
-    state_while_do_start_wait,
-    state_while_do_start_wait2,
-    state_while_do_start_cnt_end,
+    s_while_do_start,
+    s_while_do_start_data,
+    s_while_do_start_cnt,
+    s_while_do_start_cnt_reload,
+    s_while_do_start_wait,
+    s_while_do_start_wait2,
+    s_while_do_start_cnt_end,
 
-    state_while_do_end,
-    state_while_do_end_data,
-    state_while_do_end_cnt,
-    state_while_do_end_cnt_reload,
-    state_while_do_end_wait,
-    state_while_do_end_wait2,
-    state_while_do_end_cnt_end,
+    s_while_do_end,
+    s_while_do_end_data,
+    s_while_do_end_cnt,
+    s_while_do_end_cnt_reload,
+    s_while_do_end_wait,
+    s_while_do_end_wait2,
+    s_while_do_end_cnt_end,
 
     -- Do-while
-    state_do_while_start,
+    s_do_while_start,
 
-    state_do_while_end,
-    state_do_while_end_data,
-    state_do_while_end_cnt,
-    state_do_while_end_cnt_reload,
-    state_do_while_end_wait,
-    state_do_while_end_wait2,
-    state_do_while_end_cnt_end,
+    s_do_while_end,
+    s_do_while_end_data,
+    s_do_while_end_cnt,
+    s_do_while_end_cnt_reload,
+    s_do_while_end_wait,
+    s_do_while_end_wait2,
+    s_do_while_end_cnt_end,
 
     -- Other
-    state_return,
-    state_undefined
+    s_return,
+    s_undefined
 
   );
 
-  SIGNAL curr_state : fsm_state := state_idle;
+  SIGNAL curr_state : fsm_state := s_idle;
   SIGNAL next_state : fsm_state;
 
 BEGIN
-  fsm_curr_state_proc : PROCESS (CLK, RESET) BEGIN
+  fsm_curr_s_proc : PROCESS (CLK, RESET) BEGIN
     IF RESET = '1' THEN
-      curr_state <= state_idle;
+      curr_state <= s_idle;
     ELSIF rising_edge(CLK) AND EN = '1' THEN
       curr_state <= next_state;
     END IF;
   END PROCESS;
 
-  fsm_next_state_proc : PROCESS (curr_state, OUT_BUSY, DATA_RDATA, IN_VLD, CNT_OUT) BEGIN
+  fsm_next_s_proc : PROCESS (curr_state, OUT_BUSY, DATA_RDATA, IN_VLD, CNT_OUT) BEGIN
 
     PC_INC <= '0';
     PC_DEC <= '0';
@@ -359,310 +359,310 @@ BEGIN
     CASE curr_state IS
 
         -- Idle
-      WHEN state_idle =>
+      WHEN s_idle =>
         PC_CLR <= '1';
         CNT_CLR <= '1';
         PTR_CLR <= '1';
-        next_state <= state_load;
+        next_state <= s_load;
 
         -- Load instruction
-      WHEN state_load =>
+      WHEN s_load =>
         DATA_EN <= '1';
-        next_state <= state_decode;
+        next_state <= s_decode;
 
         -- Decode instruction
-      WHEN state_decode =>
+      WHEN s_decode =>
         CASE DATA_RDATA IS
           WHEN X"3E" =>
             PC_INC <= '1';
-            next_state <= state_ptr_inc; -- >
+            next_state <= s_ptr_inc; -- >
           WHEN X"3C" =>
             PC_INC <= '1';
-            next_state <= state_ptr_dec; -- <
+            next_state <= s_ptr_dec; -- <
           WHEN X"2B" =>
             MX1_SEL <= '1';
-            next_state <= state_val_inc; -- +
+            next_state <= s_val_inc; -- +
           WHEN X"2D" =>
             MX1_SEL <= '1';
-            next_state <= state_val_dec; -- -
+            next_state <= s_val_dec; -- -
           WHEN X"5B" =>
             MX1_SEL <= '1';
             PC_INC <= '1';
-            next_state <= state_while_do_start; -- [
+            next_state <= s_while_do_start; -- [
           WHEN X"5D" =>
             MX1_SEL <= '1';
-            next_state <= state_while_do_end; -- ]
+            next_state <= s_while_do_end; -- ]
           WHEN X"28" =>
             PC_INC <= '1';
-            next_state <= state_do_while_start; -- (
+            next_state <= s_do_while_start; -- (
           WHEN X"29" =>
             MX1_SEL <= '1';
-            next_state <= state_do_while_end; -- )
+            next_state <= s_do_while_end; -- )
           WHEN X"2E" =>
             MX1_SEL <= '1';
-            next_state <= state_putchar_start; -- .
+            next_state <= s_putc_start; -- .
           WHEN X"2C" =>
             MX1_SEL <= '1';
-            next_state <= state_getchar_start; -- ,
-          WHEN X"00" => next_state <= state_return; -- null
+            next_state <= s_getc_start; -- ,
+          WHEN X"00" => next_state <= s_return; -- null
           WHEN OTHERS =>
             PC_INC <= '1';
-            next_state <= state_undefined; -- undef
+            next_state <= s_undefined; -- undef
         END CASE;
 
         -- '>' Ptr++
-      WHEN state_ptr_inc =>
+      WHEN s_ptr_inc =>
         PTR_INC <= '1';
-        next_state <= state_load;
+        next_state <= s_load;
 
         -- '<' Ptr--
-      WHEN state_ptr_dec =>
+      WHEN s_ptr_dec =>
         PTR_DEC <= '1';
-        next_state <= state_load;
+        next_state <= s_load;
 
         -- '+' Value++
-      WHEN state_val_inc =>
+      WHEN s_val_inc =>
         DATA_EN <= '1';
         DATA_RDWR <= '0';
-        next_state <= state_mx2_10;
+        next_state <= s_mx2_10;
 
         -- '+' Prepare for incrementing value
-      WHEN state_mx2_10 =>
+      WHEN s_mx2_10 =>
         MX2_SEL <= "10";
         MX1_SEL <= '1';
         PC_INC <= '1';
-        next_state <= state_val_inc_end;
+        next_state <= s_val_inc_end;
 
         -- '+' Data wdata++
-      WHEN state_val_inc_end =>
+      WHEN s_val_inc_end =>
         DATA_EN <= '1';
         DATA_RDWR <= '1';
-        next_state <= state_load;
+        next_state <= s_load;
 
         -- '-' Value--
-      WHEN state_val_dec =>
+      WHEN s_val_dec =>
         DATA_EN <= '1';
         DATA_RDWR <= '0';
-        next_state <= state_mx2_01;
+        next_state <= s_mx2_01;
 
         -- '-' Prepare for decrementing value
-      WHEN state_mx2_01 =>
+      WHEN s_mx2_01 =>
         MX2_SEL <= "01";
         MX1_SEL <= '1';
         PC_INC <= '1';
-        next_state <= state_val_dec_end;
+        next_state <= s_val_dec_end;
 
         -- '-' Data wdata--
-      WHEN state_val_dec_end =>
+      WHEN s_val_dec_end =>
         DATA_EN <= '1';
         DATA_RDWR <= '1';
-        next_state <= state_load;
+        next_state <= s_load;
 
         -- '.' Load data
-      WHEN state_putchar_start =>
+      WHEN s_putc_start =>
         DATA_EN <= '1';
         DATA_RDWR <= '0';
         PC_INC <= '1';
         MX1_SEL <= '1';
-        next_state <= state_putchar_end;
+        next_state <= s_putc_end;
 
         -- '.' Put_char
-      WHEN state_putchar_end =>
+      WHEN s_putc_end =>
         IF OUT_BUSY = '0' THEN
           OUT_WE <= '1';
-          next_state <= state_load;
+          next_state <= s_load;
         ELSE
           DATA_EN <= '1';
           DATA_RDWR <= '0';
           MX1_SEL <= '1';
-          next_state <= state_putchar_end;
+          next_state <= s_putc_end;
         END IF;
 
         -- ',' Request char
-      WHEN state_getchar_start =>
+      WHEN s_getc_start =>
         IN_REQ <= '1';
-        next_state <= state_getchar_end;
+        next_state <= s_getc_end;
 
         -- ',' Get_char
-      WHEN state_getchar_end =>
+      WHEN s_getc_end =>
         IF IN_VLD /= '1' THEN
           IN_REQ <= '1';
-          next_state <= state_getchar_end;
+          next_state <= s_getc_end;
         ELSE
           MX2_SEL <= "00";
           MX1_SEL <= '1';
           PC_INC <= '1';
-          next_state <= state_write;
+          next_state <= s_write;
         END IF;
 
         -- ',' Save char
-      WHEN state_write =>
+      WHEN s_write =>
         DATA_EN <= '1';
         DATA_RDWR <= '1';
-        next_state <= state_load;
+        next_state <= s_load;
 
         -- '[' Start while cycle
-      WHEN state_while_do_start =>
+      WHEN s_while_do_start =>
         DATA_EN <= '1';
         DATA_RDWR <= '0';
-        next_state <= state_while_do_start_data;
+        next_state <= s_while_do_start_data;
 
         -- '[' Check memory
-      WHEN state_while_do_start_data =>
+      WHEN s_while_do_start_data =>
         IF DATA_RDATA = "00000000" THEN
           DATA_EN <= '1';
           DATA_RDWR <= '0';
           CNT_SET <= '1';
-          next_state <= state_while_do_start_cnt;
+          next_state <= s_while_do_start_cnt;
         ELSE
-          next_state <= state_load;
+          next_state <= s_load;
         END IF;
 
         -- '[' State for PC counter
-      WHEN state_while_do_start_cnt_reload =>
+      WHEN s_while_do_start_cnt_reload =>
         IF CNT_OUT /= "000000000000" THEN
           PC_INC <= '1';
         ELSE
           --PC_DEC <= '1';
         END IF;
-        next_state <= state_while_do_start_wait;
+        next_state <= s_while_do_start_wait;
 
-      WHEN state_while_do_start_wait =>
-        next_state <= state_while_do_start_wait2;
+      WHEN s_while_do_start_wait =>
+        next_state <= s_while_do_start_wait2;
 
-      WHEN state_while_do_start_wait2 =>
+      WHEN s_while_do_start_wait2 =>
         DATA_EN <= '1';
         DATA_RDWR <= '0';
-        next_state <= state_while_do_start_cnt;
+        next_state <= s_while_do_start_cnt;
 
         -- '[' Count brackets
-      WHEN state_while_do_start_cnt =>
+      WHEN s_while_do_start_cnt =>
         IF CNT_OUT /= "000000000000" THEN
           IF DATA_RDATA = x"5B" THEN
             CNT_INC <= '1';
           ELSIF DATA_RDATA = x"5D" THEN
             CNT_DEC <= '1';
           END IF;
-          next_state <= state_while_do_start_cnt_reload;
+          next_state <= s_while_do_start_cnt_reload;
         ELSE
-          next_state <= state_while_do_start_cnt_end;
+          next_state <= s_while_do_start_cnt_end;
         END IF;
 
         -- '[' Wait for PC counter 
-      WHEN state_while_do_start_cnt_end =>
-        next_state <= state_load;
+      WHEN s_while_do_start_cnt_end =>
+        next_state <= s_load;
 
         -- ']' End while cycle
-      WHEN state_while_do_end =>
+      WHEN s_while_do_end =>
         DATA_EN <= '1';
         DATA_RDWR <= '0';
-        next_state <= state_while_do_end_data;
+        next_state <= s_while_do_end_data;
 
         -- ']' Check memory
-      WHEN state_while_do_end_data =>
+      WHEN s_while_do_end_data =>
         IF DATA_RDATA = "00000000" THEN
           PC_INC <= '1';
-          next_state <= state_while_do_end_cnt_end;
+          next_state <= s_while_do_end_cnt_end;
         ELSE
           CNT_SET <= '1';
           PC_DEC <= '1';
-          next_state <= state_while_do_end_wait;
+          next_state <= s_while_do_end_wait;
         END IF;
 
         -- ']' Count CNT
-      WHEN state_while_do_end_cnt =>
+      WHEN s_while_do_end_cnt =>
         IF CNT_OUT /= "000000000000" THEN
           IF DATA_RDATA = x"5D" THEN
             CNT_INC <= '1';
           ELSIF DATA_RDATA = x"5B" THEN
             CNT_DEC <= '1';
           END IF;
-          next_state <= state_while_do_end_cnt_reload;
+          next_state <= s_while_do_end_cnt_reload;
         ELSE
-          next_state <= state_while_do_end_cnt_end;
+          next_state <= s_while_do_end_cnt_end;
         END IF;
 
         -- ']' State for PC counter
-      WHEN state_while_do_end_cnt_reload =>
+      WHEN s_while_do_end_cnt_reload =>
         IF CNT_OUT = "000000000000" THEN
           PC_INC <= '1';
         ELSE
           PC_DEC <= '1';
         END IF;
-        next_state <= state_while_do_end_wait;
+        next_state <= s_while_do_end_wait;
 
-      WHEN state_while_do_end_wait =>
-        next_state <= state_while_do_end_wait2;
+      WHEN s_while_do_end_wait =>
+        next_state <= s_while_do_end_wait2;
 
-      WHEN state_while_do_end_wait2 =>
+      WHEN s_while_do_end_wait2 =>
         DATA_EN <= '1';
         DATA_RDWR <= '0';
-        next_state <= state_while_do_end_cnt;
+        next_state <= s_while_do_end_cnt;
 
         -- ']' Wait for PC counter 
-      WHEN state_while_do_end_cnt_end =>
-        next_state <= state_load;
+      WHEN s_while_do_end_cnt_end =>
+        next_state <= s_load;
 
         -- '(' Continue
-      WHEN state_do_while_start =>
-        next_state <= state_load;
+      WHEN s_do_while_start =>
+        next_state <= s_load;
 
         -- ')' End Do-While
-      WHEN state_do_while_end =>
+      WHEN s_do_while_end =>
         DATA_EN <= '1';
         DATA_RDWR <= '0';
-        next_state <= state_do_while_end_data;
+        next_state <= s_do_while_end_data;
 
         -- ')' Check memory
-      WHEN state_do_while_end_data =>
+      WHEN s_do_while_end_data =>
         IF DATA_RDATA = "00000000" THEN
           PC_INC <= '1';
-          next_state <= state_do_while_end_cnt_end;
+          next_state <= s_do_while_end_cnt_end;
         ELSE
           CNT_SET <= '1';
           PC_DEC <= '1';
-          next_state <= state_do_while_end_wait;
+          next_state <= s_do_while_end_wait;
         END IF;
 
         -- ')' Count CNT
-      WHEN state_do_while_end_cnt =>
+      WHEN s_do_while_end_cnt =>
         IF CNT_OUT /= "000000000000" THEN
           IF DATA_RDATA = x"29" THEN
             CNT_INC <= '1';
           ELSIF DATA_RDATA = x"28" THEN
             CNT_DEC <= '1';
           END IF;
-          next_state <= state_do_while_end_cnt_reload;
+          next_state <= s_do_while_end_cnt_reload;
         ELSE
-          next_state <= state_do_while_end_cnt_end;
+          next_state <= s_do_while_end_cnt_end;
         END IF;
 
         -- ')' State for PC counter
-      WHEN state_do_while_end_cnt_reload =>
+      WHEN s_do_while_end_cnt_reload =>
         IF CNT_OUT = "000000000000" THEN
           PC_INC <= '1';
         ELSE
           PC_DEC <= '1';
         END IF;
-        next_state <= state_do_while_end_wait;
+        next_state <= s_do_while_end_wait;
 
-      WHEN state_do_while_end_wait =>
-        next_state <= state_do_while_end_wait2;
+      WHEN s_do_while_end_wait =>
+        next_state <= s_do_while_end_wait2;
 
-      WHEN state_do_while_end_wait2 =>
+      WHEN s_do_while_end_wait2 =>
         DATA_EN <= '1';
         DATA_RDWR <= '0';
-        next_state <= state_do_while_end_cnt;
+        next_state <= s_do_while_end_cnt;
 
         -- ')' Wait for PC counter 
-      WHEN state_do_while_end_cnt_end =>
-        next_state <= state_load;
+      WHEN s_do_while_end_cnt_end =>
+        next_state <= s_load;
 
         -- 'NULL' Loop in return
-      WHEN state_return => next_state <= state_return;
+      WHEN s_return => next_state <= s_return;
 
         -- '?' Continue
-      WHEN state_undefined => next_state <= state_load;
+      WHEN s_undefined => next_state <= s_load;
     END CASE;
   END PROCESS;
 END behavioral;
